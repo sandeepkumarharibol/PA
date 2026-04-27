@@ -66,14 +66,16 @@ export default function ConfigScreen({ weekColumns, projects, onWeekSelected, on
           {weekColumns.length} week{weekColumns.length !== 1 ? 's' : ''} found in the uploaded file
         </p>
 
-        {/* Diagnostic panel — shows exact frequency values read from the Excel */}
+        {/* Diagnostic panel */}
         <details style={{ marginTop: '20px' }}>
           <summary style={{ fontSize: '12px', color: '#94a3b8', cursor: 'pointer', userSelect: 'none' }}>
-            🔍 Diagnostic: view raw frequency values from Excel
+            🔍 Diagnostic: view raw data from Excel
           </summary>
-          <div style={{ marginTop: '10px', background: '#f8fafc', borderRadius: '8px', padding: '12px', border: '1px solid #e2e8f0' }}>
-            <p style={{ fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Unique Frequency values found in Column G (Status = YES only):
+          <div style={{ marginTop: '10px', background: '#f8fafc', borderRadius: '8px', padding: '12px', border: '1px solid #e2e8f0', fontSize: '11px' }}>
+
+            {/* A: Frequency values */}
+            <p style={{ fontWeight: '700', color: '#475569', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              A) Unique Frequency values (Col G, Status=YES):
             </p>
             {(() => {
               const freqMap = {};
@@ -85,11 +87,49 @@ export default function ConfigScreen({ weekColumns, projects, onWeekSelected, on
                 }
               });
               return Object.entries(freqMap).sort((a,b) => b[1]-a[1]).map(([freq, count]) => (
-                <div key={freq} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div key={freq} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f1f5f9' }}>
                   <span style={{ fontFamily: 'monospace', color: '#1e293b' }}>"{freq}"</span>
                   <span style={{ color: '#64748b' }}>{count} projects</span>
                 </div>
               ));
+            })()}
+
+            {/* B: Week column structure */}
+            <p style={{ fontWeight: '700', color: '#475569', marginTop: '14px', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              B) Week Columns Detected (Row 2):
+            </p>
+            {weekColumns.map(wc => (
+              <div key={wc.colIndex} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontFamily: 'monospace', color: '#1e293b' }}>Col {wc.colIndex} → "{wc.weekLabel}"</span>
+                <span style={{ color: '#64748b' }}>{wc.month} · weekNum={wc.weekNumber}</span>
+              </div>
+            ))}
+
+            {/* C: Bi-weekly project values */}
+            <p style={{ fontWeight: '700', color: '#475569', marginTop: '14px', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              C) Bi-Weekly Projects — non-blank submission values:
+            </p>
+            {(() => {
+              const biweekly = projects.filter(p =>
+                String(p.status).toUpperCase() === 'YES' &&
+                String(p.frequency).toUpperCase().replace(/[^A-Z]/g, '') === 'BIWEEKLY'
+              );
+              if (biweekly.length === 0) return <div style={{ color: '#94a3b8' }}>No bi-weekly projects found</div>;
+              return biweekly.map((p, i) => {
+                const nonBlank = p.weekValues.filter(wv => wv.value !== '');
+                const vals = nonBlank.map(wv => {
+                  const wc = weekColumns.find(w => w.colIndex === wv.colIndex);
+                  return `${wc ? wc.displayLabel : 'col'+wv.colIndex}=${wv.value}`;
+                }).join(' | ');
+                return (
+                  <div key={i} style={{ padding: '4px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '2px' }}>{p.projectName}</div>
+                    <div style={{ fontFamily: 'monospace', color: '#64748b', wordBreak: 'break-word' }}>
+                      {vals || '(all blank)'}
+                    </div>
+                  </div>
+                );
+              });
             })()}
           </div>
         </details>
