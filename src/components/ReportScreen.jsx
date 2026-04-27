@@ -10,6 +10,7 @@ import {
   getComplianceColor,
   generateRecommendedActions,
   findPreviousWeek,
+  calculateFrequencyBreakdown,
 } from '../utils/compliance';
 
 /* ─── Shared micro-components ─────────────────────────────────────── */
@@ -80,6 +81,8 @@ export default function ReportScreen({ projects, weekColumns, selectedWeek, onBa
     [projects, previousWeekCol]
   );
   const wowChange = previousMetrics !== null ? metrics.compliancePct - previousMetrics.compliancePct : null;
+
+  const freqBreakdown = useMemo(() => calculateFrequencyBreakdown(projects, selectedWeek), [projects, selectedWeek]);
 
   const actions = useMemo(() =>
     generateRecommendedActions(metrics, accountData, selectedWeek),
@@ -261,6 +264,56 @@ export default function ReportScreen({ projects, weekColumns, selectedWeek, onBa
                 icon={<Users size={20} color={offenderAccounts.length === 0 ? '#16a34a' : '#d97706'} />}
               />
             )}
+          </div>
+
+          {/* Frequency breakdown table */}
+          <div style={{ marginTop: '24px' }}>
+            <p style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>
+              Compliance Calculation Breakdown — {selectedWeek.displayLabel}
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    {['Frequency', 'Eligible Projects', 'Submitted (O / D)', 'Not Submitted', 'Compliance %'].map((h) => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {freqBreakdown.rows.map((row, i) => {
+                    const pct = row.eligible > 0 ? Math.round((row.submitted / row.eligible) * 100) : 0;
+                    return (
+                      <tr key={row.frequency} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                        <td style={{ ...s.td, fontWeight: '600', color: '#1e293b' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: row.frequency === 'Weekly' ? '#2563eb' : row.frequency === 'Bi-Weekly' ? '#7c3aed' : '#d97706', flexShrink: 0 }} />
+                            {row.frequency}
+                          </span>
+                        </td>
+                        <td style={{ ...s.td, textAlign: 'center', fontWeight: '600' }}>{row.eligible}</td>
+                        <td style={{ ...s.td, textAlign: 'center', color: '#16a34a', fontWeight: '700' }}>{row.submitted}</td>
+                        <td style={{ ...s.td, textAlign: 'center', color: row.notSubmitted > 0 ? '#dc2626' : '#16a34a', fontWeight: '700' }}>{row.notSubmitted}</td>
+                        <td style={{ ...s.td, textAlign: 'center' }}><Pill pct={pct} size="sm" /></td>
+                      </tr>
+                    );
+                  })}
+                  {/* Total row */}
+                  <tr style={{ background: '#f0f7ff', borderTop: '2px solid #1e4d8c' }}>
+                    <td style={{ ...s.td, fontWeight: '800', color: '#0c2340' }}>TOTAL</td>
+                    <td style={{ ...s.td, textAlign: 'center', fontWeight: '800', color: '#0c2340' }}>{freqBreakdown.total.eligible}</td>
+                    <td style={{ ...s.td, textAlign: 'center', fontWeight: '800', color: '#16a34a' }}>{freqBreakdown.total.submitted}</td>
+                    <td style={{ ...s.td, textAlign: 'center', fontWeight: '800', color: freqBreakdown.total.notSubmitted > 0 ? '#dc2626' : '#16a34a' }}>{freqBreakdown.total.notSubmitted}</td>
+                    <td style={{ ...s.td, textAlign: 'center' }}><Pill pct={metrics.compliancePct} /></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>
+              Compliance = Total Submitted ÷ Total Eligible × 100 &nbsp;•&nbsp;
+              Submitted = O (On Time) + D (Delayed) &nbsp;•&nbsp;
+              Not Submitted = all other statuses (N, ND, NA, blank)
+            </p>
           </div>
         </Card>
 

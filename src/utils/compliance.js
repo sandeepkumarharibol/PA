@@ -96,6 +96,48 @@ export function calculateAccountCompliance(projects, weekColumn) {
     .sort((a, b) => a.compliancePct - b.compliancePct);
 }
 
+// Breaks down eligible/submitted/not-submitted per frequency group for the selected week.
+// Week 2 example: Weekly (149 eligible, 98 submitted) + Bi-Weekly (7 eligible, 6 submitted)
+//                 → Total eligible 156, submitted 104, compliance 67%
+export function calculateFrequencyBreakdown(projects, weekColumn) {
+  const { weekNumber, colIndex } = weekColumn;
+  const freqGroups = getEligibleFrequencies(weekNumber);
+
+  const rows = freqGroups.map((freq) => {
+    const eligible = projects.filter(
+      (p) => String(p.status).toUpperCase() === 'YES' && normalizeFreq(p.frequency) === freq
+    );
+    const submitted = eligible.filter((p) => {
+      const val = getWeekValue(p, colIndex);
+      return val === 'O' || val === 'D';
+    });
+    const notSubmitted = eligible.filter((p) => {
+      const val = getWeekValue(p, colIndex);
+      return val !== 'O' && val !== 'D';
+    });
+
+    const label = freq === 'WEEKLY' ? 'Weekly' : freq === 'BIWEEKLY' ? 'Bi-Weekly' : 'Monthly';
+    return {
+      frequency: label,
+      eligible: eligible.length,
+      submitted: submitted.length,
+      notSubmitted: notSubmitted.length,
+    };
+  });
+
+  const total = rows.reduce(
+    (acc, r) => ({
+      frequency: 'Total',
+      eligible: acc.eligible + r.eligible,
+      submitted: acc.submitted + r.submitted,
+      notSubmitted: acc.notSubmitted + r.notSubmitted,
+    }),
+    { eligible: 0, submitted: 0, notSubmitted: 0 }
+  );
+
+  return { rows, total };
+}
+
 // Finds the correct previous comparable week for week-on-week comparison.
 // Week 1 → compare with most recent Week 4 (previous month uses Weekly+Biweekly+Monthly)
 // Week 2 → compare with Week 1  (Weekly only)
