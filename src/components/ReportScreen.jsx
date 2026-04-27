@@ -9,6 +9,7 @@ import {
   calculateAccountCompliance,
   getComplianceColor,
   generateRecommendedActions,
+  findPreviousWeek,
 } from '../utils/compliance';
 
 /* ─── Shared micro-components ─────────────────────────────────────── */
@@ -72,6 +73,14 @@ export default function ReportScreen({ projects, weekColumns, selectedWeek, onBa
     [projects, weekColumns]
   );
 
+  // Previous comparable week — Week 1→Week 4, Week 2→Week 1, Week 3→Week 2, Week 4→Week 3
+  const previousWeekCol = useMemo(() => findPreviousWeek(weekColumns, selectedWeek), [weekColumns, selectedWeek]);
+  const previousMetrics = useMemo(
+    () => previousWeekCol ? calculateCompliance(projects, previousWeekCol) : null,
+    [projects, previousWeekCol]
+  );
+  const wowChange = previousMetrics !== null ? metrics.compliancePct - previousMetrics.compliancePct : null;
+
   const actions = useMemo(() =>
     generateRecommendedActions(metrics, accountData, selectedWeek),
     [metrics, accountData, selectedWeek]
@@ -100,10 +109,13 @@ export default function ReportScreen({ projects, weekColumns, selectedWeek, onBa
   const handlePrint = () => window.print();
 
   /* ── Exec summary paragraph ───────────────────────────────────── */
+  const wowSentence = wowChange !== null
+    ? ` Compared to ${previousWeekCol.displayLabel} (${previousMetrics.compliancePct}%), this is a ${Math.abs(wowChange)}-point ${wowChange >= 0 ? 'improvement' : 'drop'}.`
+    : '';
   const summaryText = `This report covers WSR compliance for ${selectedWeek.displayLabel}. ` +
     `Out of ${metrics.eligible} eligible project${metrics.eligible !== 1 ? 's' : ''}, ` +
     `${metrics.submitted} ${metrics.submitted !== 1 ? 'have' : 'has'} submitted their weekly status reports, ` +
-    `resulting in a compliance rate of ${metrics.compliancePct}%. ` +
+    `resulting in a compliance rate of ${metrics.compliancePct}%.${wowSentence} ` +
     (metrics.notSubmitted > 0
       ? `${metrics.notSubmitted} project${metrics.notSubmitted !== 1 ? 's remain' : ' remains'} non-compliant and require immediate follow-up.`
       : 'All eligible projects have fulfilled their reporting obligations this week.');
@@ -232,13 +244,23 @@ export default function ReportScreen({ projects, weekColumns, selectedWeek, onBa
               color={getComplianceColor(metrics.notSubmitted === 0 ? 100 : metrics.notSubmitted <= 2 ? 70 : 50)}
               icon={<XCircle size={20} color={metrics.notSubmitted === 0 ? '#16a34a' : '#dc2626'} />}
             />
-            <CalloutCard
-              label="Accounts Affected"
-              value={offenderAccounts.length}
-              sub={offenderAccounts.length === 0 ? 'All accounts compliant' : `account${offenderAccounts.length !== 1 ? 's' : ''} with gaps`}
-              color={getComplianceColor(offenderAccounts.length === 0 ? 100 : offenderAccounts.length <= 2 ? 70 : 50)}
-              icon={<Users size={20} color={offenderAccounts.length === 0 ? '#16a34a' : '#d97706'} />}
-            />
+            {wowChange !== null ? (
+              <CalloutCard
+                label={`vs ${previousWeekCol.displayLabel}`}
+                value={`${wowChange >= 0 ? '+' : ''}${wowChange}pts`}
+                sub={`Prev: ${previousMetrics.compliancePct}% (${previousMetrics.submitted}/${previousMetrics.eligible} submitted)`}
+                color={getComplianceColor(wowChange >= 0 ? 100 : wowChange >= -10 ? 70 : 40)}
+                icon={<TrendingUp size={20} color={wowChange >= 0 ? '#16a34a' : '#dc2626'} />}
+              />
+            ) : (
+              <CalloutCard
+                label="Accounts Affected"
+                value={offenderAccounts.length}
+                sub={offenderAccounts.length === 0 ? 'All accounts compliant' : `account${offenderAccounts.length !== 1 ? 's' : ''} with gaps`}
+                color={getComplianceColor(offenderAccounts.length === 0 ? 100 : offenderAccounts.length <= 2 ? 70 : 50)}
+                icon={<Users size={20} color={offenderAccounts.length === 0 ? '#16a34a' : '#d97706'} />}
+              />
+            )}
           </div>
         </Card>
 

@@ -96,6 +96,30 @@ export function calculateAccountCompliance(projects, weekColumn) {
     .sort((a, b) => a.compliancePct - b.compliancePct);
 }
 
+// Finds the correct previous comparable week for week-on-week comparison.
+// Week 1 → compare with most recent Week 4 (previous month uses Weekly+Biweekly+Monthly)
+// Week 2 → compare with Week 1  (Weekly only)
+// Week 3 → compare with Week 2  (Weekly+Biweekly)
+// Week 4 → compare with Week 3  (Weekly only)
+// Week 5 → compare with Week 4  (Weekly+Biweekly+Monthly)
+export function findPreviousWeek(weekColumns, selectedWeek) {
+  const currentIdx = weekColumns.findIndex((wc) => wc.colIndex === selectedWeek.colIndex);
+  if (currentIdx <= 0) return null;
+
+  const targetWeekNum = selectedWeek.weekNumber === 1 ? 4 : selectedWeek.weekNumber - 1;
+
+  for (let i = currentIdx - 1; i >= 0; i--) {
+    if (weekColumns[i].weekNumber === targetWeekNum) return weekColumns[i];
+  }
+  // If target was week 4 and not found, try week 5 (some months have 5 weeks)
+  if (targetWeekNum === 4) {
+    for (let i = currentIdx - 1; i >= 0; i--) {
+      if (weekColumns[i].weekNumber === 5) return weekColumns[i];
+    }
+  }
+  return null;
+}
+
 export function generateRecommendedActions(metrics, accountData, selectedWeek) {
   const { compliancePct, notSubmitted, eligible, submitted, notSubmittedProjects } = metrics;
   const actions = [];
