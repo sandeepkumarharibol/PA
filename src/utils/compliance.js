@@ -1,5 +1,7 @@
 function normalizeFreq(freq) {
-  return String(freq).toUpperCase().replace(/[-\s]/g, '');
+  // Strip ALL non-alphabetic characters (handles hyphens, en-dashes, em-dashes,
+  // non-breaking spaces, and any other special chars Excel may insert)
+  return String(freq).toUpperCase().replace(/[^A-Z]/g, '');
 }
 
 export function getEligibleFrequencies(weekNumber) {
@@ -21,7 +23,13 @@ export function isEligible(project, weekNumber) {
 
 export function getWeekValue(project, colIndex) {
   const wv = project.weekValues.find((w) => w.colIndex === colIndex);
-  return wv ? wv.value : '';
+  // Trim + uppercase here too in case any value slipped through without normalisation
+  return wv ? String(wv.value).trim().toUpperCase() : '';
+}
+
+function isSubmitted(val) {
+  // Accept O, D (and full words "ON TIME", "DELAYED" just in case)
+  return val === 'O' || val === 'D' || val === 'ONTIME' || val === 'DELAYED';
 }
 
 export function calculateCompliance(projects, weekColumn) {
@@ -29,15 +37,8 @@ export function calculateCompliance(projects, weekColumn) {
 
   const eligibleProjects = projects.filter((p) => isEligible(p, weekNumber));
 
-  const submittedProjects = eligibleProjects.filter((p) => {
-    const val = getWeekValue(p, colIndex);
-    return val === 'O' || val === 'D';
-  });
-
-  const notSubmittedProjects = eligibleProjects.filter((p) => {
-    const val = getWeekValue(p, colIndex);
-    return val !== 'O' && val !== 'D';
-  });
+  const submittedProjects = eligibleProjects.filter((p) => isSubmitted(getWeekValue(p, colIndex)));
+  const notSubmittedProjects = eligibleProjects.filter((p) => !isSubmitted(getWeekValue(p, colIndex)));
 
   const eligible = eligibleProjects.length;
   const submitted = submittedProjects.length;
@@ -80,7 +81,7 @@ export function calculateAccountCompliance(projects, weekColumn) {
     }
     accounts[acc].eligible++;
     const val = getWeekValue(p, colIndex);
-    if (val === 'O' || val === 'D') {
+    if (isSubmitted(val)) {
       accounts[acc].submitted++;
     } else {
       accounts[acc].notSubmitted++;
@@ -107,14 +108,8 @@ export function calculateFrequencyBreakdown(projects, weekColumn) {
     const eligible = projects.filter(
       (p) => String(p.status).toUpperCase() === 'YES' && normalizeFreq(p.frequency) === freq
     );
-    const submitted = eligible.filter((p) => {
-      const val = getWeekValue(p, colIndex);
-      return val === 'O' || val === 'D';
-    });
-    const notSubmitted = eligible.filter((p) => {
-      const val = getWeekValue(p, colIndex);
-      return val !== 'O' && val !== 'D';
-    });
+    const submitted = eligible.filter((p) => isSubmitted(getWeekValue(p, colIndex)));
+    const notSubmitted = eligible.filter((p) => !isSubmitted(getWeekValue(p, colIndex)));
 
     const label = freq === 'WEEKLY' ? 'Weekly' : freq === 'BIWEEKLY' ? 'Bi-Weekly' : 'Monthly';
     return {
