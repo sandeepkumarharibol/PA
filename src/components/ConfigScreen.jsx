@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Calendar, ChevronRight, ArrowLeft, BarChart3 } from 'lucide-react';
 
-export default function ConfigScreen({ weekColumns, onWeekSelected, onBack }) {
+export default function ConfigScreen({ weekColumns, projects, onWeekSelected, onBack }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
   const monthGroups = weekColumns.reduce((acc, wc, idx) => {
@@ -65,6 +65,34 @@ export default function ConfigScreen({ weekColumns, onWeekSelected, onBack }) {
         <p style={s.hint}>
           {weekColumns.length} week{weekColumns.length !== 1 ? 's' : ''} found in the uploaded file
         </p>
+
+        {/* Diagnostic panel — shows exact frequency values read from the Excel */}
+        <details style={{ marginTop: '20px' }}>
+          <summary style={{ fontSize: '12px', color: '#94a3b8', cursor: 'pointer', userSelect: 'none' }}>
+            🔍 Diagnostic: view raw frequency values from Excel
+          </summary>
+          <div style={{ marginTop: '10px', background: '#f8fafc', borderRadius: '8px', padding: '12px', border: '1px solid #e2e8f0' }}>
+            <p style={{ fontSize: '11px', fontWeight: '700', color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Unique Frequency values found in Column G (Status = YES only):
+            </p>
+            {(() => {
+              const freqMap = {};
+              projects.forEach(p => {
+                if (String(p.status).toUpperCase() === 'YES') {
+                  const raw = p.frequency;
+                  if (!freqMap[raw]) freqMap[raw] = 0;
+                  freqMap[raw]++;
+                }
+              });
+              return Object.entries(freqMap).sort((a,b) => b[1]-a[1]).map(([freq, count]) => (
+                <div key={freq} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '4px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontFamily: 'monospace', color: '#1e293b' }}>"{freq}"</span>
+                  <span style={{ color: '#64748b' }}>{count} projects</span>
+                </div>
+              ));
+            })()}
+          </div>
+        </details>
       </div>
     </div>
   );

@@ -38,6 +38,7 @@ export default function App() {
       {screen === 'config' && parsedData && (
         <ConfigScreen
           weekColumns={parsedData.weekColumns}
+          projects={parsedData.projects}
           onWeekSelected={handleWeekSelected}
           onBack={handleBack}
         />
