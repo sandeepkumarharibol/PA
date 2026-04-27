@@ -1,10 +1,14 @@
+function normalizeFreq(freq) {
+  return String(freq).toUpperCase().replace(/[-\s]/g, '');
+}
+
 export function getEligibleFrequencies(weekNumber) {
   switch (weekNumber) {
     case 1: return ['WEEKLY'];
-    case 2: return ['WEEKLY', 'BI-WEEKLY'];
+    case 2: return ['WEEKLY', 'BIWEEKLY'];
     case 3: return ['WEEKLY'];
     case 4:
-    case 5: return ['WEEKLY', 'BI-WEEKLY', 'MONTHLY'];
+    case 5: return ['WEEKLY', 'BIWEEKLY', 'MONTHLY'];
     default: return ['WEEKLY'];
   }
 }
@@ -12,7 +16,7 @@ export function getEligibleFrequencies(weekNumber) {
 export function isEligible(project, weekNumber) {
   if (String(project.status).toUpperCase() !== 'YES') return false;
   const eligibleFreqs = getEligibleFrequencies(weekNumber);
-  return eligibleFreqs.includes(String(project.frequency).toUpperCase());
+  return eligibleFreqs.includes(normalizeFreq(project.frequency));
 }
 
 export function getWeekValue(project, colIndex) {
@@ -32,7 +36,7 @@ export function calculateCompliance(projects, weekColumn) {
 
   const notSubmittedProjects = eligibleProjects.filter((p) => {
     const val = getWeekValue(p, colIndex);
-    return val === 'N';
+    return val !== 'O' && val !== 'D';
   });
 
   const eligible = eligibleProjects.length;
@@ -78,7 +82,7 @@ export function calculateAccountCompliance(projects, weekColumn) {
     const val = getWeekValue(p, colIndex);
     if (val === 'O' || val === 'D') {
       accounts[acc].submitted++;
-    } else if (val === 'N') {
+    } else {
       accounts[acc].notSubmitted++;
       accounts[acc].notSubmittedProjects.push(p);
     }
