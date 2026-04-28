@@ -32,13 +32,29 @@ function isSubmitted(val) {
   return val === 'O' || val === 'D' || val === 'ONTIME' || val === 'DELAYED';
 }
 
-export function calculateCompliance(projects, weekColumn) {
+// Bi-weekly cells are merged in Excel: weeks 1+2 share week 1's column, weeks 3+4 share week 3's.
+// For even week numbers, step back to the previous (odd) week's column to read the merged value.
+function getBiweeklyValue(project, weekColumns, weekNumber, currentColIndex) {
+  if (weekNumber % 2 === 0) {
+    const prevWeekCol = weekColumns.find((wc) => wc.weekNumber === weekNumber - 1);
+    if (prevWeekCol) return getWeekValue(project, prevWeekCol.colIndex);
+  }
+  return getWeekValue(project, currentColIndex);
+}
+
+function resolveValue(project, weekColumns, weekNumber, colIndex) {
+  return normalizeFreq(project.frequency) === 'BIWEEKLY'
+    ? getBiweeklyValue(project, weekColumns, weekNumber, colIndex)
+    : getWeekValue(project, colIndex);
+}
+
+export function calculateCompliance(projects, weekColumn, weekColumns) {
   const { weekNumber, colIndex } = weekColumn;
 
   const eligibleProjects = projects.filter((p) => isEligible(p, weekNumber));
 
-  const submittedProjects = eligibleProjects.filter((p) => isSubmitted(getWeekValue(p, colIndex)));
-  const notSubmittedProjects = eligibleProjects.filter((p) => !isSubmitted(getWeekValue(p, colIndex)));
+  const submittedProjects = eligibleProjects.filter((p) => isSubmitted(resolveValue(p, weekColumns, weekNumber, colIndex)));
+  const notSubmittedProjects = eligibleProjects.filter((p) => !isSubmitted(resolveValue(p, weekColumns, weekNumber, colIndex)));
 
   const eligible = eligibleProjects.length;
   const submitted = submittedProjects.length;
@@ -63,7 +79,7 @@ export function getComplianceColor(pct) {
   return { text: '#dc2626', bg: '#fef2f2', pill: '#fee2e2', border: '#fca5a5', label: 'Critical' };
 }
 
-export function calculateAccountCompliance(projects, weekColumn) {
+export function calculateAccountCompliance(projects, weekColumn, weekColumns) {
   const { weekNumber, colIndex } = weekColumn;
   const accounts = {};
 
@@ -80,7 +96,7 @@ export function calculateAccountCompliance(projects, weekColumn) {
       };
     }
     accounts[acc].eligible++;
-    const val = getWeekValue(p, colIndex);
+    const val = resolveValue(p, weekColumns, weekNumber, colIndex);
     if (isSubmitted(val)) {
       accounts[acc].submitted++;
     } else {
@@ -100,7 +116,7 @@ export function calculateAccountCompliance(projects, weekColumn) {
 // Breaks down eligible/submitted/not-submitted per frequency group for the selected week.
 // Week 2 example: Weekly (149 eligible, 98 submitted) + Bi-Weekly (7 eligible, 6 submitted)
 //                 → Total eligible 156, submitted 104, compliance 67%
-export function calculateFrequencyBreakdown(projects, weekColumn) {
+export function calculateFrequencyBreakdown(projects, weekColumn, weekColumns) {
   const { weekNumber, colIndex } = weekColumn;
   const freqGroups = getEligibleFrequencies(weekNumber);
 
@@ -108,8 +124,12 @@ export function calculateFrequencyBreakdown(projects, weekColumn) {
     const eligible = projects.filter(
       (p) => String(p.status).toUpperCase() === 'YES' && normalizeFreq(p.frequency) === freq
     );
-    const submitted = eligible.filter((p) => isSubmitted(getWeekValue(p, colIndex)));
-    const notSubmitted = eligible.filter((p) => !isSubmitted(getWeekValue(p, colIndex)));
+    const getVal = (p) =>
+      freq === 'BIWEEKLY'
+        ? getBiweeklyValue(p, weekColumns, weekNumber, colIndex)
+        : getWeekValue(p, colIndex);
+    const submitted = eligible.filter((p) => isSubmitted(getVal(p)));
+    const notSubmitted = eligible.filter((p) => !isSubmitted(getVal(p)));
 
     const label = freq === 'WEEKLY' ? 'Weekly' : freq === 'BIWEEKLY' ? 'Bi-Weekly' : 'Monthly';
     return {

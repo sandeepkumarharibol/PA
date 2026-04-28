@@ -66,23 +66,23 @@ function ActionIcon({ type, color }) {
 
 /* ═══════════════════════════════════════════════════════════════════ */
 export default function ReportScreen({ projects, weekColumns, selectedWeek, onBack, onStartOver }) {
-  const metrics = useMemo(() => calculateCompliance(projects, selectedWeek), [projects, selectedWeek]);
-  const accountData = useMemo(() => calculateAccountCompliance(projects, selectedWeek), [projects, selectedWeek]);
+  const metrics = useMemo(() => calculateCompliance(projects, selectedWeek, weekColumns), [projects, selectedWeek, weekColumns]);
+  const accountData = useMemo(() => calculateAccountCompliance(projects, selectedWeek, weekColumns), [projects, selectedWeek, weekColumns]);
 
   const allWeeksData = useMemo(() =>
-    weekColumns.map((wc) => ({ ...wc, ...calculateCompliance(projects, wc) })),
+    weekColumns.map((wc) => ({ ...wc, ...calculateCompliance(projects, wc, weekColumns) })),
     [projects, weekColumns]
   );
 
   // Previous comparable week — Week 1→Week 4, Week 2→Week 1, Week 3→Week 2, Week 4→Week 3
   const previousWeekCol = useMemo(() => findPreviousWeek(weekColumns, selectedWeek), [weekColumns, selectedWeek]);
   const previousMetrics = useMemo(
-    () => previousWeekCol ? calculateCompliance(projects, previousWeekCol) : null,
-    [projects, previousWeekCol]
+    () => previousWeekCol ? calculateCompliance(projects, previousWeekCol, weekColumns) : null,
+    [projects, previousWeekCol, weekColumns]
   );
   const wowChange = previousMetrics !== null ? metrics.compliancePct - previousMetrics.compliancePct : null;
 
-  const freqBreakdown = useMemo(() => calculateFrequencyBreakdown(projects, selectedWeek), [projects, selectedWeek]);
+  const freqBreakdown = useMemo(() => calculateFrequencyBreakdown(projects, selectedWeek, weekColumns), [projects, selectedWeek, weekColumns]);
 
   const actions = useMemo(() =>
     generateRecommendedActions(metrics, accountData, selectedWeek),
